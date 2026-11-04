@@ -1,10 +1,28 @@
 import argparse
 from pathlib import Path
 
-from huggingface_hub import HfApi, get_token
+from huggingface_hub import CommitOperationAdd, HfApi, get_token
+
+SPACE_README = """---
+title: Spectrum for YouTube API
+emoji: 📊
+colorFrom: red
+colorTo: yellow
+sdk: docker
+app_port: 7860
+---
+
+# Spectrum for YouTube API
+
+This Space serves the YouTube comment sentiment model. Open `/docs` on the
+Space's API origin for interactive documentation.
+
+The [GitHub project](https://github.com/4ymaneBH/youtube_sentiment_analyses)
+has the Chrome extension, architecture, and model evaluation.
+"""
 
 SERVING_FILES = [
-    "README.md", "Dockerfile", ".dockerignore", "requirements.txt", "app_api.py",
+    "Dockerfile", ".dockerignore", "requirements.txt", "app_api.py",
     "src/youtube_sentiment/*.py", "src/youtube_sentiment/api/*.py",
     "src/youtube_sentiment/data/*.py", "src/youtube_sentiment/models/*.py",
     "models/metadata.json", "models/sentiment_pipeline.joblib",
@@ -22,14 +40,18 @@ def main() -> None:
     missing = [str(path) for path in required if not path.is_file()]
     if missing:
         parser.error("Missing files: " + ", ".join(missing))
+
+    files = sorted({path for pattern in SERVING_FILES for path in Path(".").glob(pattern) if path.is_file()})
+    operations = [CommitOperationAdd(path_in_repo="README.md", path_or_fileobj=SPACE_README.encode("utf-8"))]
+    operations.extend(CommitOperationAdd(path_in_repo=path.as_posix(), path_or_fileobj=path) for path in files)
+
     api = HfApi()
     api.create_repo(
         args.space, repo_type="space", space_sdk="docker",
         private=args.visibility == "private", exist_ok=True,
     )
-    api.upload_folder(
-        folder_path=".", repo_id=args.space, repo_type="space", allow_patterns=SERVING_FILES,
-        ignore_patterns=["**/__pycache__/**", "**/*.pyc"],
+    api.create_commit(
+        args.space, operations, repo_type="space",
         commit_message="Deploy the YouTube sentiment API and trained model",
     )
     print(f"https://huggingface.co/spaces/{args.space}")

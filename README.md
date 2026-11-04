@@ -12,11 +12,7 @@
   A Chrome extension with a FastAPI service and a bundled scikit-learn model.
 </p>
 
-<p align="center">
-  <a href="https://github.com/4ymaneBH/youtube_sentiment_analyses/actions/workflows/ci.yml"><img src="https://github.com/4ymaneBH/youtube_sentiment_analyses/actions/workflows/ci.yml/badge.svg" alt="Validation workflow"></a>
-  <img src="https://img.shields.io/badge/Python-3.13-3776AB" alt="Python 3.13">
-  <img src="https://img.shields.io/badge/Chrome-Manifest%20V3-5B43C5" alt="Chrome Manifest V3">
-</p>
+<p align="center"><strong>Chrome Manifest V3 · Python 3.13 · FastAPI</strong></p>
 
 <p align="center">
   <a href="#quick-start">Quick start</a> ·
@@ -114,6 +110,8 @@ Set `MODEL_DIR` to load a different trusted model directory. Set `CORS_ORIGINS` 
 </details>
 
 ## Development
+
+[Validation workflow](.github/workflows/ci.yml)
 
 <details>
 <summary>Reproduce training and the report</summary>
