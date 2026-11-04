@@ -154,21 +154,14 @@ try {
         expression: `(async () => {
           const button = document.getElementById("results").hidden
             ? document.getElementById("analyze") : document.getElementById("export");
-          // Native popup resize is asynchronous after switching views.
-          const deadline = performance.now() + 2000;
-          do {
-            button.scrollIntoView({ block: "center", behavior: "instant" });
-            await new Promise(requestAnimationFrame);
-            const rect = button.getBoundingClientRect();
-            if (rect.top >= 0 && rect.bottom <= innerHeight) break;
-          } while (performance.now() < deadline);
-          const { top, bottom } = button.getBoundingClientRect();
-          return { top, bottom, height: innerHeight, scrollY };
+          button.scrollIntoView({ block: "center", behavior: "instant" });
+          await new Promise(requestAnimationFrame);
+          const rect = button.getBoundingClientRect();
+          const target = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+          return button.contains(target);
         })()`, awaitPromise: true, returnByValue: true,
       });
-      const { top, bottom, height } = footer.result.value;
-      assert.ok(top >= 0 && bottom <= height,
-        `${name}: bottom actions must fit after scrolling (${JSON.stringify(footer.result.value)})`);
+      assert.equal(footer.result.value, true, "bottom action can be clicked after scrolling: " + name);
     } finally {
       if (popupTarget) await client.send("Target.closeTarget", { targetId: popupTarget.targetId });
       await client.detach();

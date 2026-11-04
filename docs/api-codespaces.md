@@ -6,7 +6,13 @@
 2. Dans l’onglet **Ports**, ouvrez le menu du port **7860** et sélectionnez **Port Visibility → Public**. En ligne de commande, utilisez `gh codespace ports visibility 7860:public -c NOM_DU_CODESPACE`.
 3. Copiez l’adresse HTTPS du port. Elle prend la forme `https://NOM_DU_CODESPACE-7860.app.github.dev`. Ouvrez `/health` et `/docs` dans une fenêtre privée pour vérifier l’accès sans session GitHub.
 
-Avant la démonstration, assurez-vous que le Codespace tourne et que le port est public. GitHub peut remettre le port en mode privé au redémarrage. Si l’API ne répond pas, consultez `/tmp/spectrum-api.log` dans le terminal du Codespace.
+Avant la démonstration, assurez-vous que le Codespace tourne et que le port est public. GitHub peut remettre le port en mode privé au redémarrage. Si `/health` renvoie une erreur `502` après le démarrage, lancez l’API depuis la racine du dépôt dans le terminal du Codespace et consultez son journal.
+
+```sh
+nohup .venv/bin/python -m uvicorn app_api:app --app-dir src --host 0.0.0.0 --port 7860 \
+  </dev/null >/tmp/spectrum-api.log 2>&1 &
+tail /tmp/spectrum-api.log
+```
 
 ## Endpoints
 
