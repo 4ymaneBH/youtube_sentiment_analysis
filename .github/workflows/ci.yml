@@ -1,0 +1,32 @@
+name: Validate project
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: uv sync --locked --group train
+      - run: uv run ruff check src tests scripts app_api.py main.py
+      - run: uv run pytest -q
+      - run: npm ci
+      - run: npm test
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: extension-browser-trace
+          path: tmp/e2e/trace.zip
+          if-no-files-found: ignore
+      - run: docker build -t youtube-sentiment:test .
+      - name: Verify container health
+        run: |
+          docker run --rm -d --name sentiment-ci -p 127.0.0.1:7860:7860 youtube-sentiment:test
+          trap 'docker logs sentiment-ci; docker stop sentiment-ci' EXIT
+          curl --fail --retry 15 --retry-connrefused --retry-all-errors --retry-delay 2 http://127.0.0.1:7860/health

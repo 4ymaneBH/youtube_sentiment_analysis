@@ -1,0 +1,150 @@
+import assert from "node:assert/strict";
+import { spawn } from "node:child_process";
+import { mkdir, mkdtemp, readFile } from "node:fs/promises";
+import { resolve } from "node:path";
+import { setTimeout as delay } from "node:timers/promises";
+
+const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || "playwright");
+const live = process.argv.includes("--live");
+const output = resolve(process.env.E2E_OUTPUT || "tmp/e2e");
+await mkdir(output, { recursive: true });
+const profile = await mkdtemp(resolve(output, "profile-"));
+const python = process.env.PYTHON_EXE || (process.platform === "win32"
+  ? resolve(".venv/Scripts/python.exe") : resolve(".venv/bin/python"));
+const api = spawn(python, ["-m", "uvicorn", "app_api:app", "--port", "7860"], {
+  stdio: "inherit", windowsHide: true,
+  env: { ...process.env, OPENBLAS_NUM_THREADS: "2", OMP_NUM_THREADS: "2" },
+});
+let serverError;
+api.on("error", (error) => { serverError = error; });
+const apiUrl = "http://127.0.0.1:7860";
+const videoUrl = "https://www.youtube.com/watch?v=" + (live ? "jNQXAC9IVRw" : "fixture-video");
+
+let browser;
+try {
+  let ready = false;
+  for (let attempt = 0; attempt < 60; attempt++) {
+    if (serverError) throw serverError;
+    if (api.exitCode !== null) throw new Error("Uvicorn exited before startup");
+    ready = await fetch(apiUrl + "/health", { signal: AbortSignal.timeout(750) })
+      .then((r) => r.ok).catch(() => false);
+    if (ready) break;
+    await delay(500);
+  }
+  assert.ok(ready, "local API is ready");
+  const extensionPath = resolve("chrome-extension");
+  browser = await chromium.launchPersistentContext(profile, {
+    channel: "chromium", headless: true,
+    args: ["--disable-extensions-except=" + extensionPath, "--load-extension=" + extensionPath],
+  });
+  await browser.tracing.start({ screenshots: true, snapshots: true });
+  const worker = browser.serviceWorkers()[0] || await browser.waitForEvent("serviceworker");
+  const extensionOrigin = new URL(worker.url()).origin.replace(/^null$/, worker.url().split("/").slice(0, 3).join("/"));
+  const video = await browser.newPage();
+  if (!live) {
+    await video.route("https://www.youtube.com/watch?*", (route) => route.fulfill({
+      contentType: "text/html",
+      body: `<!doctype html><meta charset="utf-8"><main>
+        <ytd-comment-view-model><span id="content-text">I love this excellent tutorial!</span></ytd-comment-view-model>
+        <ytd-comment-view-model><span id="content-text">This is awful and frustrating.</span></ytd-comment-view-model>
+        <ytd-comment-view-model><span id="content-text">The video is 12 minutes long.</span></ytd-comment-view-model>
+        <ytd-comment-view-model><span id="content-text">&lt;img src=x onerror=alert(1)&gt;</span></ytd-comment-view-model>
+        <ytd-comment-view-model><span id="content-text">https://example.com</span></ytd-comment-view-model>
+        <ytd-comment-view-model hidden><span id="content-text">Hidden comment.</span></ytd-comment-view-model>
+      </main>`,
+    }));
+  }
+  await video.goto(videoUrl, { waitUntil: "domcontentloaded" });
+  if (live) {
+    for (let attempt = 0; attempt < 12; attempt++) {
+      await video.mouse.wheel(0, 800);
+      if (await video.locator("ytd-comment-view-model #content-text, ytd-comment-renderer #content-text").first().isVisible()) break;
+      await delay(850);
+    }
+    await video.locator("ytd-comment-view-model #content-text, ytd-comment-renderer #content-text")
+      .first().waitFor({ state: "visible", timeout: 15000 });
+  } else {
+    await video.evaluate(() => {
+      const row = document.createElement("ytd-comment-view-model");
+      const body = document.createElement("span");
+      body.id = "content-text";
+      body.textContent = "A comment loaded after navigation.";
+      row.append(body);
+      document.querySelector("main").append(row);
+    });
+  }
+  const target = await worker.evaluate(async (url) => {
+    const tabs = await chrome.tabs.query({});
+    const tab = tabs.find((item) => item.url === url);
+    return tab ? { id: tab.id, url: tab.url } : null;
+  }, videoUrl);
+  assert.ok(target, "extension can identify the test video tab");
+
+  async function openPopup() {
+    const popup = await browser.newPage();
+    await popup.setViewportSize({ width: 420, height: 660 });
+    // Opening the popup document as a tab lets Playwright inspect it. Route its
+    // active-tab lookup to the video while using the actual extension APIs.
+    await popup.addInitScript((tab) => {
+      if (location.protocol === "chrome-extension:") chrome.tabs.query = async () => [tab];
+    }, target);
+    await popup.goto(extensionOrigin + "/popup.html");
+    return popup;
+  }
+
+  const popup = await openPopup();
+  await popup.getByRole("button", { name: "Analyze comments" }).click();
+  await popup.getByText("Analysis complete", { exact: false }).waitFor({ timeout: 45000 });
+  if (!live) {
+    assert.equal(await popup.locator("#comments li").count(), 6);
+    assert.equal(await popup.locator("#comments img").count(), 0);
+    assert.ok((await popup.locator("#metadata").textContent()).includes("1 skipped"));
+  }
+  await popup.locator("body").screenshot({ path: resolve(output, "popup-light.png") });
+  await popup.getByRole("combobox", { name: "Sentiment" }).selectOption("positive");
+  assert.ok(await popup.locator("#comments .badge.positive").count());
+  const [download] = await Promise.all([
+    popup.waitForEvent("download"), popup.getByRole("button", { name: "Export JSON" }).click(),
+  ]);
+  assert.match(download.suggestedFilename(), /^youtube-sentiment-.*\.json$/);
+  const exported = JSON.parse(await readFile(await download.path(), "utf8"));
+  assert.ok(exported.comments.length);
+  assert.ok(exported.comments.every((row) => row.sentiment === "positive"));
+  await popup.bringToFront();
+  await popup.getByRole("button", { name: "Copy results" }).click();
+  await popup.getByText("Copied the filtered results.").waitFor();
+  await popup.locator("#theme").click();
+  assert.equal(await popup.locator("html").getAttribute("data-theme"), "dark");
+  await popup.locator("body").screenshot({ path: resolve(output, "popup-dark.png") });
+  const count = await popup.locator("#count").textContent();
+  await popup.close();
+  const reopened = await openPopup();
+  await reopened.getByText("Analysis complete", { exact: false }).waitFor();
+  assert.equal(await reopened.locator("#count").textContent(), count);
+  assert.equal(await reopened.locator("html").getAttribute("data-theme"), "dark");
+
+  if (!live) {
+    const nextUrl = "https://www.youtube.com/watch?v=other-fixture";
+    await video.goto(nextUrl);
+    target.url = nextUrl;
+    const newVideoPopup = await openPopup();
+    await newVideoPopup.getByRole("button", { name: "Analyze comments" }).waitFor();
+    assert.equal(await newVideoPopup.locator("#count").textContent(), "");
+    api.kill();
+    for (let attempt = 0; attempt < 20 && api.exitCode === null && api.signalCode === null; attempt++) {
+      await delay(100);
+    }
+    await newVideoPopup.getByRole("button", { name: "Analyze comments" }).click();
+    await newVideoPopup.getByText("Could not reach the sentiment API", { exact: false }).waitFor();
+  }
+  console.log("Passed extension browser flow against " + (live ? "a live YouTube video" : "a fixture video"));
+} finally {
+  try {
+    if (browser) {
+      await browser.tracing.stop({ path: resolve(output, "trace.zip") });
+      await browser.close();
+    }
+  } finally {
+    if (api.exitCode === null && api.signalCode === null) api.kill();
+  }
+}

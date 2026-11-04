@@ -18,3 +18,4 @@ wheels/
 /[Dd]ata/processed/
 /logs/
 /tmp/
+/node_modules/
