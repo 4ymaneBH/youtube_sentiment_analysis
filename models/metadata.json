@@ -1,0 +1,38 @@
+{
+  "model_version": "7badefffbc0d",
+  "pipeline_sha256": "7badefffbc0d9e4e12ef855b16947fb973e1bafcb7ffc78125b7675d6051de8f",
+  "runtime_versions": {
+    "scikit-learn": "1.7.2",
+    "numpy": "2.2.6",
+    "scipy": "1.16.3",
+    "joblib": "1.5.2"
+  },
+  "labels": {
+    "-1": "negative",
+    "0": "neutral",
+    "1": "positive"
+  },
+  "data": {
+    "dataset_sha256": "99b5f4e68ffe49acfb4055c59750fadf5b01d74ce3144e0391161585f42869cd",
+    "seed": 42,
+    "usable_rows": 36571,
+    "class_counts": {
+      "1": 15723,
+      "-1": 8233,
+      "0": 12615
+    },
+    "train_rows": 29256,
+    "test_rows": 7315,
+    "empty_after_cleaning": 262,
+    "conflicting_text_groups": 0,
+    "duplicates_or_conflicts_removed": 416
+  },
+  "parameters": {
+    "classifier__C": 16,
+    "classifier__class_weight": "balanced",
+    "tfidf__transformer_weights": {
+      "word": 1,
+      "char": 0.7
+    }
+  }
+}

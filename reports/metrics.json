@@ -1,0 +1,169 @@
+{
+  "model_version": "7badefffbc0d",
+  "accuracy": 0.883526999316473,
+  "classification_report": {
+    "negative": {
+      "precision": 0.8232676414494596,
+      "recall": 0.7862780813600486,
+      "f1-score": 0.8043478260869565,
+      "support": 1647.0
+    },
+    "neutral": {
+      "precision": 0.9005671077504726,
+      "recall": 0.9441141498216409,
+      "f1-score": 0.9218266253869969,
+      "support": 2523.0
+    },
+    "positive": {
+      "precision": 0.8995802389409105,
+      "recall": 0.8858505564387917,
+      "f1-score": 0.8926626081384171,
+      "support": 3145.0
+    },
+    "accuracy": 0.883526999316473,
+    "macro avg": {
+      "precision": 0.8744716627136143,
+      "recall": 0.8720809292068271,
+      "f1-score": 0.8729456865374569,
+      "support": 7315.0
+    },
+    "weighted avg": {
+      "precision": 0.8827385467930098,
+      "recall": 0.883526999316473,
+      "f1-score": 0.8828370947384734,
+      "support": 7315.0
+    }
+  },
+  "label_order": [
+    -1,
+    0,
+    1
+  ],
+  "confusion_matrix": [
+    [
+      1295,
+      125,
+      227
+    ],
+    [
+      57,
+      2382,
+      84
+    ],
+    [
+      221,
+      138,
+      2786
+    ]
+  ],
+  "cv_macro_f1": {
+    "majority": 0.20044302029553904,
+    "linear_svm": 0.8471398166572883,
+    "best_logistic_regression": 0.854469809801234
+  },
+  "trials": [
+    {
+      "parameters": {
+        "classifier__C": 4,
+        "classifier__class_weight": null,
+        "tfidf__char": "drop",
+        "tfidf__word__min_df": 1
+      },
+      "macro_f1": 0.8082941125756479
+    },
+    {
+      "parameters": {
+        "classifier__C": 4,
+        "classifier__class_weight": null,
+        "tfidf__char": "drop",
+        "tfidf__word__min_df": 2
+      },
+      "macro_f1": 0.8326312259480954
+    },
+    {
+      "parameters": {
+        "classifier__C": 4,
+        "classifier__class_weight": "balanced",
+        "tfidf__char": "drop",
+        "tfidf__word__min_df": 1
+      },
+      "macro_f1": 0.8344388643326618
+    },
+    {
+      "parameters": {
+        "classifier__C": 4,
+        "classifier__class_weight": "balanced",
+        "tfidf__char": "drop",
+        "tfidf__word__min_df": 2
+      },
+      "macro_f1": 0.8349651779081207
+    },
+    {
+      "parameters": {
+        "classifier__C": 16,
+        "classifier__class_weight": null,
+        "tfidf__char": "drop",
+        "tfidf__word__min_df": 1
+      },
+      "macro_f1": 0.8390374161741884
+    },
+    {
+      "parameters": {
+        "classifier__C": 16,
+        "classifier__class_weight": null,
+        "tfidf__char": "drop",
+        "tfidf__word__min_df": 2
+      },
+      "macro_f1": 0.8416320867001686
+    },
+    {
+      "parameters": {
+        "classifier__C": 16,
+        "classifier__class_weight": "balanced",
+        "tfidf__char": "drop",
+        "tfidf__word__min_df": 1
+      },
+      "macro_f1": 0.8364190626747011
+    },
+    {
+      "parameters": {
+        "classifier__C": 16,
+        "classifier__class_weight": "balanced",
+        "tfidf__char": "drop",
+        "tfidf__word__min_df": 2
+      },
+      "macro_f1": 0.8302325504402167
+    },
+    {
+      "parameters": {
+        "classifier__C": 4,
+        "classifier__class_weight": "balanced",
+        "tfidf__transformer_weights": {
+          "word": 1,
+          "char": 0.7
+        }
+      },
+      "macro_f1": 0.853107448332714
+    },
+    {
+      "parameters": {
+        "classifier__C": 16,
+        "classifier__class_weight": "balanced",
+        "tfidf__transformer_weights": {
+          "word": 1,
+          "char": 0.7
+        }
+      },
+      "macro_f1": 0.854469809801234
+    }
+  ],
+  "benchmark": {
+    "batch_size": 50,
+    "repetitions": 30,
+    "mean_ms": 50.851,
+    "p95_ms": 82.599,
+    "platform": "Windows-11-10.0.26220-SP0",
+    "cpu": "Intel64 Family 6 Model 158 Stepping 10, GenuineIntel",
+    "thread_limit": 2
+  }
+}
