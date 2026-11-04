@@ -52,11 +52,17 @@
 
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
+html {
+  /* Chrome sizes toolbar popups from the document's intrinsic width. A viewport
+     limit here would keep the popup stuck at its initial narrow viewport. */
+  width: 25.5rem;
+}
 body {
-  width: min(25.5rem, 100vw);
   margin: 0;
   background: var(--surface);
   color: var(--text);
+  /* Override the browser's extension-page body font with our root font stack. */
+  font-family: inherit;
   font-size: .875rem;
 }
 h1, h2, p { margin: 0; }
@@ -99,7 +105,7 @@ button:disabled { cursor: default; }
   padding: .5rem var(--gutter);
   border-bottom: 1px solid var(--line);
 }
-.wordmark { gap: .5rem; flex-wrap: wrap; }
+.wordmark { gap: .5rem; }
 .mark { flex: none; width: 1.875rem; height: 1.875rem; }
 .mark-plate { fill: var(--mark); }
 .mark .band { stroke-width: 2; stroke-linecap: round; }
@@ -116,7 +122,7 @@ button:disabled { cursor: default; }
   font-weight: 700;
   letter-spacing: -.035em;
 }
-.wordmark-context { color: var(--muted); font-size: .75rem; }
+.wordmark-context { color: var(--muted); font-size: .75rem; white-space: nowrap; }
 .icon-button {
   flex: none;
   display: grid;

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { mkdir, mkdtemp, readFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 
@@ -80,6 +80,93 @@ try {
   }, videoUrl);
   assert.ok(target, "extension can identify the test video tab");
 
+  async function checkNativePopup(name) {
+    // A popup opened as a tab cannot catch Chrome's intrinsic popup sizing.
+    // Toolbar popups are not exposed as Playwright pages, so inspect via CDP.
+    await video.bringToFront();
+    const client = await browser.browser().newBrowserCDPSession();
+    let popupTarget;
+    try {
+      const previousTargets = new Set((await client.send("Target.getTargets")).targetInfos.map((item) => item.targetId));
+      await worker.evaluate(() => chrome.action.openPopup());
+      const { targetInfos } = await client.send("Target.getTargets");
+      popupTarget = targetInfos.find((item) => item.url === extensionOrigin + "/popup.html" && item.type === "page"
+        && !previousTargets.has(item.targetId));
+      assert.ok(popupTarget, "native toolbar popup opened");
+      const { sessionId } = await client.send("Target.attachToTarget", { targetId: popupTarget.targetId });
+      let nextId = 0;
+      async function send(method, params = {}) {
+        const id = ++nextId;
+        return new Promise((resolve, reject) => {
+          const timer = setTimeout(() => finish(new Error("Popup CDP timeout: " + method)), 10000);
+          function finish(error, result) {
+            clearTimeout(timer);
+            client.off("Target.receivedMessageFromTarget", receive);
+            if (error) reject(error); else resolve(result);
+          }
+          function receive(event) {
+            if (event.sessionId !== sessionId) return;
+            const message = JSON.parse(event.message);
+            if (message.id === id) finish(message.error ? new Error(message.error.message) : null, message.result);
+          }
+          client.on("Target.receivedMessageFromTarget", receive);
+          client.send("Target.sendMessageToTarget", { sessionId, message: JSON.stringify({ id, method, params }) })
+            .catch(finish);
+        });
+      }
+      const { result, exceptionDetails } = await send("Runtime.evaluate", {
+        expression: `(async () => {
+          await document.fonts.ready;
+          while (document.getElementById("status").textContent === "Checking the current tab…") {
+            await new Promise(requestAnimationFrame);
+          }
+          await new Promise(requestAnimationFrame);
+          await new Promise(requestAnimationFrame);
+          const root = document.documentElement;
+          const controls = [...document.querySelectorAll(".toolbar, h1, #theme, #analyze, #spectrum-art, #distribution, #filter, .actions")]
+            .filter((element) => element.getClientRects().length)
+            .map((element) => {
+              const rect = element.getBoundingClientRect();
+              return { name: element.id || element.className || element.tagName, left: rect.left, right: rect.right, bottom: rect.bottom };
+            });
+          return { width: innerWidth, height: innerHeight, rootWidth: root.getBoundingClientRect().width,
+            scrollHeight: root.scrollHeight, clientHeight: root.clientHeight,
+            scrollWidth: root.scrollWidth, clientWidth: root.clientWidth,
+            fontFamily: getComputedStyle(document.body).fontFamily, controls };
+        })()`,
+        awaitPromise: true, returnByValue: true,
+      });
+      assert.ok(!exceptionDetails, "popup layout can be measured");
+      const layout = result.value;
+      await writeFile(resolve(output, "native-" + name + ".json"), JSON.stringify(layout, null, 2));
+      const screenshot = await send("Page.captureScreenshot");
+      await writeFile(resolve(output, "native-" + name + ".png"), Buffer.from(screenshot.data, "base64"));
+      assert.equal(layout.rootWidth, 408, "toolbar popup keeps its intended content width: " + name);
+      assert.ok(layout.width >= 408 && layout.width <= 428, "popup only grows to accommodate a scrollbar: " + name);
+      assert.ok(layout.scrollWidth <= layout.clientWidth, "no horizontal overflow: " + name);
+      assert.match(layout.fontFamily, /system-ui/, "body retains the extension's font stack");
+      for (const control of layout.controls) {
+        assert.ok(control.left >= 0 && control.right <= layout.clientWidth,
+          name + ": " + control.name + " fits across the popup");
+      }
+      const footer = await send("Runtime.evaluate", {
+        expression: `(() => {
+          const button = document.getElementById("results").hidden
+            ? document.getElementById("analyze") : document.getElementById("export");
+          button.scrollIntoView({ block: "end" });
+          const rect = button.getBoundingClientRect();
+          return rect.top >= 0 && rect.bottom <= innerHeight;
+        })()`, returnByValue: true,
+      });
+      assert.equal(footer.result.value, true, "bottom actions remain reachable in short windows: " + name);
+    } finally {
+      if (popupTarget) await client.send("Target.closeTarget", { targetId: popupTarget.targetId });
+      await client.detach();
+    }
+  }
+
+  await checkNativePopup("idle");
+
   async function openPopup() {
     const popup = await browser.newPage();
     await popup.setViewportSize({ width: 420, height: 660 });
@@ -126,6 +213,7 @@ try {
   await popup.locator("body").screenshot({ path: resolve(output, "popup-dark.png") });
   const count = await popup.locator("#count").textContent();
   await popup.close();
+  await checkNativePopup("dark-results");
   const reopened = await openPopup();
   await reopened.getByRole("heading", { name: "Sentiment", exact: true }).waitFor();
   assert.equal(await reopened.locator("#count").textContent(), count);
@@ -142,8 +230,13 @@ try {
     for (let attempt = 0; attempt < 20 && api.exitCode === null && api.signalCode === null; attempt++) {
       await delay(100);
     }
+    // Also exercise the unavailable-API state when a local server is already running.
+    await browser.setOffline(true);
     await newVideoPopup.getByRole("button", { name: "Analyze comments" }).click();
     await newVideoPopup.getByText("Could not reach the sentiment API", { exact: false }).waitFor();
+    await newVideoPopup.close();
+    await reopened.close();
+    await checkNativePopup("error");
   }
   console.log("Passed extension browser flow against " + (live ? "a live YouTube video" : "a fixture video"));
 } finally {
