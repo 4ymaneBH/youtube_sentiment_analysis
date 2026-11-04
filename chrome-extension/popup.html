@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>YouTube Sentiment</title>
+  <link rel="stylesheet" href="popup.css">
+  <script type="module" src="popup.js"></script>
+</head>
+<body>
+  <header>
+    <div class="identity">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9" fill="currentColor"/><path d="M8 21v-5m5 5v-9m6 9v-13m5 13V11" stroke="white" stroke-width="2.6" stroke-linecap="round"/></svg>
+      <div><p class="eyebrow">YOUTUBE EXTENSION</p><h1>Comment sentiment</h1></div>
+    </div>
+    <button id="theme" class="subtle" type="button" aria-label="Dark theme" aria-pressed="false">Dark</button>
+  </header>
+  <main>
+    <section class="overview" aria-labelledby="overview-title">
+      <div class="row"><h2 id="overview-title">Overview</h2><span id="count" class="count"></span></div>
+      <p id="status" role="status">Checking the current tab…</p>
+      <button id="analyze" class="primary" type="button" disabled>Analyze comments</button>
+      <div id="distribution" hidden>
+        <div id="chart" class="chart" aria-hidden="true"></div>
+        <ul id="legend" class="legend" aria-label="Sentiment distribution"></ul>
+        <p id="metadata" class="metadata"></p>
+      </div>
+    </section>
+    <section id="results" hidden aria-labelledby="results-title">
+      <div class="row">
+        <h2 id="results-title">Comments</h2>
+        <label class="filter">Sentiment
+          <select id="filter">
+            <option value="all">All</option>
+            <option value="positive">Positive</option>
+            <option value="neutral">Neutral</option>
+            <option value="negative">Negative</option>
+            <option value="skipped">Skipped</option>
+          </select>
+        </label>
+      </div>
+      <ul id="comments" class="comments"></ul>
+      <p id="no-matches" hidden>No comments match this filter.</p>
+      <footer>
+        <button id="copy" type="button">Copy results</button>
+        <button id="export" type="button">Export JSON</button>
+      </footer>
+      <p id="feedback" class="metadata" role="status"></p>
+    </section>
+  </main>
+</body>
+</html>
