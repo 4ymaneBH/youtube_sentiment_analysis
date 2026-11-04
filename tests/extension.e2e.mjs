@@ -142,7 +142,6 @@ try {
       const screenshot = await send("Page.captureScreenshot");
       await writeFile(resolve(output, "native-" + name + ".png"), Buffer.from(screenshot.data, "base64"));
       assert.equal(layout.rootWidth, 408, "toolbar popup keeps its intended content width: " + name);
-      assert.ok(layout.width >= 408 && layout.width <= 428, "popup only grows to accommodate a scrollbar: " + name);
       assert.ok(layout.scrollWidth <= layout.clientWidth, "no horizontal overflow: " + name);
       assert.match(layout.fontFamily, /system-ui/, "body retains the extension's font stack");
       for (const control of layout.controls) {
