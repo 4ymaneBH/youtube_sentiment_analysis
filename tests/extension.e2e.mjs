@@ -154,10 +154,16 @@ try {
         expression: `(async () => {
           const button = document.getElementById("results").hidden
             ? document.getElementById("analyze") : document.getElementById("export");
-          button.scrollIntoView({ block: "center", behavior: "instant" });
-          await new Promise(requestAnimationFrame);
-          const rect = button.getBoundingClientRect();
-          return { top: rect.top, bottom: rect.bottom, height: innerHeight, scrollY };
+          // Native popup resize is asynchronous after switching views.
+          const deadline = performance.now() + 2000;
+          do {
+            button.scrollIntoView({ block: "center", behavior: "instant" });
+            await new Promise(requestAnimationFrame);
+            const rect = button.getBoundingClientRect();
+            if (rect.top >= 0 && rect.bottom <= innerHeight) break;
+          } while (performance.now() < deadline);
+          const { top, bottom } = button.getBoundingClientRect();
+          return { top, bottom, height: innerHeight, scrollY };
         })()`, awaitPromise: true, returnByValue: true,
       });
       const { top, bottom, height } = footer.result.value;
