@@ -1,0 +1,10 @@
+*
+!requirements.txt
+!app_api.py
+!src/
+!src/**
+!models/
+!models/metadata.json
+!models/sentiment_pipeline.joblib
+**/__pycache__/
+**/*.pyc
