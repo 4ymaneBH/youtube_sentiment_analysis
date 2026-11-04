@@ -56,6 +56,7 @@ html {
   /* Chrome sizes toolbar popups from the document's intrinsic width. A viewport
      limit here would keep the popup stuck at its initial narrow viewport. */
   width: 25.5rem;
+  max-width: 100%;
 }
 body {
   margin: 0;

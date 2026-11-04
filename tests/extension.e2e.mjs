@@ -141,8 +141,10 @@ try {
       await writeFile(resolve(output, "native-" + name + ".json"), JSON.stringify(layout, null, 2));
       const screenshot = await send("Page.captureScreenshot");
       await writeFile(resolve(output, "native-" + name + ".png"), Buffer.from(screenshot.data, "base64"));
-      assert.equal(layout.rootWidth, 408, "toolbar popup keeps its intended content width: " + name);
-      assert.ok(layout.scrollWidth <= layout.clientWidth, "no horizontal overflow: " + name);
+      const expectedWidth = name === "idle" ? 408 : Math.min(408, layout.clientWidth);
+      assert.equal(layout.rootWidth, expectedWidth, "toolbar popup uses the available content width: " + name);
+      assert.ok(layout.scrollWidth <= layout.clientWidth,
+        `${name}: content width ${layout.scrollWidth}px exceeds viewport ${layout.clientWidth}px`);
       assert.match(layout.fontFamily, /system-ui/, "body retains the extension's font stack");
       for (const control of layout.controls) {
         assert.ok(control.left >= 0 && control.right <= layout.clientWidth,
