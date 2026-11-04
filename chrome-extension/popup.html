@@ -8,44 +8,86 @@
   <script type="module" src="popup.js"></script>
 </head>
 <body>
-  <header>
-    <div class="identity">
-      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9" fill="currentColor"/><path d="M8 21v-5m5 5v-9m6 9v-13m5 13V11" stroke="white" stroke-width="2.6" stroke-linecap="round"/></svg>
-      <div><p class="eyebrow">YOUTUBE EXTENSION</p><h1>Comment sentiment</h1></div>
+  <svg class="svg-library" aria-hidden="true">
+    <symbol id="icon-moon" viewBox="0 0 24 24"><path d="M20.8 14.2a8.9 8.9 0 0 1-11-11 9 9 0 1 0 11 11Z"/></symbol>
+    <symbol id="icon-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4m0-14.2-1.4 1.4M6.3 17.7l-1.4 1.4"/></symbol>
+    <symbol id="icon-arrow" viewBox="0 0 24 24"><path d="M4.5 12h14m-5-5 5 5-5 5"/></symbol>
+    <symbol id="icon-refresh" viewBox="0 0 24 24"><path d="M19.5 10a7.6 7.6 0 0 0-13-3.4L4.7 8.4m0-4.4v4.4h4.4m-4.6 5.5a7.6 7.6 0 0 0 13 3.5l1.8-1.8m0 4.4v-4.4h-4.4"/></symbol>
+    <symbol id="icon-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></symbol>
+    <symbol id="icon-download" viewBox="0 0 24 24"><path d="M12 3.5v11m-4-4 4 4 4-4M4.5 15.5v3a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-3"/></symbol>
+  </svg>
+
+  <header class="toolbar">
+    <div class="wordmark">
+      <svg class="mark" viewBox="0 0 32 32" aria-hidden="true">
+        <rect class="mark-plate" width="32" height="32" rx="8"/>
+        <path class="band band-1" d="M6 22l5-10"/><path class="band band-2" d="M9 24l6-12"/>
+        <path class="band band-3" d="M13 24l7-14"/><path class="band band-4" d="M17 22l7-14"/>
+        <path class="band band-5" d="M21 20l6-12"/><path class="band band-6" d="M25 17l4-8"/>
+      </svg>
+      <span class="wordmark-name">Spectrum</span>
+      <span class="wordmark-context">for YouTube</span>
     </div>
-    <button id="theme" class="subtle" type="button" aria-label="Dark theme" aria-pressed="false">Dark</button>
+    <button id="theme" class="icon-button" type="button" aria-label="Dark mode" aria-pressed="false" title="Switch to dark mode">
+      <svg class="icon moon" aria-hidden="true"><use href="#icon-moon"/></svg>
+      <svg class="icon sun" aria-hidden="true"><use href="#icon-sun"/></svg>
+    </button>
   </header>
+
   <main>
     <section class="overview" aria-labelledby="overview-title">
-      <div class="row"><h2 id="overview-title">Overview</h2><span id="count" class="count"></span></div>
-      <p id="status" role="status">Checking the current tab…</p>
-      <button id="analyze" class="primary" type="button" disabled>Analyze comments</button>
-      <div id="distribution" hidden>
+      <div class="overview-heading">
+        <h1 id="overview-title">Comment sentiment</h1>
+        <p id="count" class="caption" hidden></p>
+      </div>
+
+      <svg id="spectrum-art" class="spectrum-art" viewBox="0 0 370 122" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+        <defs><path id="ribbon" d="M-22 118H41C91 118 86 38 132 38h48c46 0 34 62 75 62h22c46 0 37-75 80-75h35"/></defs>
+        <use href="#ribbon" y="-30" class="band band-1"/><use href="#ribbon" y="-18" class="band band-2"/>
+        <use href="#ribbon" y="-6" class="band band-3"/><use href="#ribbon" y="6" class="band band-4"/>
+        <use href="#ribbon" y="18" class="band band-5"/><use href="#ribbon" y="30" class="band band-6"/>
+      </svg>
+
+      <p id="status" class="status" role="status">Checking the current tab…</p>
+      <progress id="progress" aria-label="Comments analyzed" hidden></progress>
+      <button id="analyze" class="analyze" type="button" disabled>
+        <span id="analyze-label">Analyze comments</span>
+        <svg class="icon" aria-hidden="true"><use id="analyze-icon" href="#icon-arrow"/></svg>
+      </button>
+
+      <div id="distribution" class="distribution" hidden>
         <div id="chart" class="chart" aria-hidden="true"></div>
         <ul id="legend" class="legend" aria-label="Sentiment distribution"></ul>
-        <p id="metadata" class="metadata"></p>
+        <p id="metadata" class="caption metadata"></p>
       </div>
     </section>
-    <section id="results" hidden aria-labelledby="results-title">
-      <div class="row">
+
+    <section id="results" class="results" hidden aria-labelledby="results-title">
+      <div class="results-heading">
         <h2 id="results-title">Comments</h2>
-        <label class="filter">Sentiment
-          <select id="filter">
-            <option value="all">All</option>
-            <option value="positive">Positive</option>
-            <option value="neutral">Neutral</option>
-            <option value="negative">Negative</option>
-            <option value="skipped">Skipped</option>
-          </select>
-        </label>
+        <span id="visible-count" class="caption" role="status"></span>
       </div>
-      <ul id="comments" class="comments"></ul>
-      <p id="no-matches" hidden>No comments match this filter.</p>
-      <footer>
-        <button id="copy" type="button">Copy results</button>
-        <button id="export" type="button">Export JSON</button>
+      <fieldset id="filter" class="segmented">
+        <legend class="sr-only">Sentiment</legend>
+        <label><input type="radio" name="sentiment" value="all" checked><span>All</span></label>
+        <label><input type="radio" name="sentiment" value="positive"><span>Positive</span></label>
+        <label><input type="radio" name="sentiment" value="neutral"><span>Neutral</span></label>
+        <label><input type="radio" name="sentiment" value="negative"><span>Negative</span></label>
+        <label id="skipped-filter" hidden><input type="radio" name="sentiment" value="skipped"><span>Skipped</span></label>
+      </fieldset>
+
+      <ul id="comments" class="comments" aria-label="Analyzed comments" tabindex="0"></ul>
+      <p id="no-matches" class="no-matches" hidden></p>
+
+      <footer class="actions">
+        <button id="copy" type="button" class="action">
+          <svg class="icon" aria-hidden="true"><use href="#icon-copy"/></svg>Copy results
+        </button>
+        <button id="export" type="button" class="action">
+          <svg class="icon" aria-hidden="true"><use href="#icon-download"/></svg>Export JSON
+        </button>
       </footer>
-      <p id="feedback" class="metadata" role="status"></p>
+      <p id="feedback" class="caption feedback" role="status"></p>
     </section>
   </main>
 </body>

@@ -1,4 +1,4 @@
-# Chrome extension guide
+# Spectrum for YouTube
 
 Start the local API with `uv run python main.py` and wait for the health endpoint to return `ok`. Load the source folder or the unpacked release ZIP from Chrome's Extensions page. Pin the extension if you want it to stay visible next to the address bar.
 
@@ -6,11 +6,11 @@ On a YouTube watch page, scroll to the comments before opening the popup. The ex
 
 ![Light theme and results](screenshots/popup-light.png)
 
-- **Overview** shows the three sentiment shares, analyzed and skipped counts, model version, and accumulated API round-trip time.
-- **Sentiment** filters the comments by predicted class or skipped status. It leaves the overall distribution visible.
+- **Sentiment summary** shows the three sentiment shares, analyzed and skipped counts, model version, and accumulated API round-trip time.
+- The **sentiment filter** switches between all comments, a single predicted class, and skipped comments when present. Tab to the filter and use the arrow keys to switch options. It leaves the overall distribution visible.
 - **Copy results** puts the filtered rows in the clipboard as JSON.
 - **Export JSON** downloads the same rows with the video ID, model version, and a summary for the current filter.
-- **Dark / Light** switches and saves the popup theme.
+- The **moon or sun button** switches and saves the popup theme.
 
 ![Dark theme and positive filter](screenshots/popup-dark.png)
 

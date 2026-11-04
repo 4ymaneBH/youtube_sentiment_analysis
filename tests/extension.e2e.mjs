@@ -93,15 +93,23 @@ try {
   }
 
   const popup = await openPopup();
+  await popup.getByRole("button", { name: "Analyze comments" }).waitFor();
+  await popup.evaluate(async () => { await document.fonts.ready; });
+  await popup.locator("body").screenshot({ path: resolve(output, "popup-idle.png") });
   await popup.getByRole("button", { name: "Analyze comments" }).click();
-  await popup.getByText("Analysis complete", { exact: false }).waitFor({ timeout: 45000 });
+  await popup.getByRole("heading", { name: "Sentiment", exact: true }).waitFor({ timeout: 45000 });
   if (!live) {
     assert.equal(await popup.locator("#comments li").count(), 6);
     assert.equal(await popup.locator("#comments img").count(), 0);
     assert.ok((await popup.locator("#metadata").textContent()).includes("1 skipped"));
   }
   await popup.locator("body").screenshot({ path: resolve(output, "popup-light.png") });
-  await popup.getByRole("combobox", { name: "Sentiment" }).selectOption("positive");
+  const positiveFilter = popup.getByRole("radio", { name: "Positive", exact: true });
+  await positiveFilter.check();
+  await positiveFilter.press("ArrowRight");
+  assert.ok(await popup.getByRole("radio", { name: "Neutral", exact: true }).isChecked());
+  await popup.getByRole("radio", { name: "Neutral", exact: true }).press("ArrowLeft");
+  assert.ok(await positiveFilter.isChecked());
   assert.ok(await popup.locator("#comments .badge.positive").count());
   const [download] = await Promise.all([
     popup.waitForEvent("download"), popup.getByRole("button", { name: "Export JSON" }).click(),
@@ -119,7 +127,7 @@ try {
   const count = await popup.locator("#count").textContent();
   await popup.close();
   const reopened = await openPopup();
-  await reopened.getByText("Analysis complete", { exact: false }).waitFor();
+  await reopened.getByRole("heading", { name: "Sentiment", exact: true }).waitFor();
   assert.equal(await reopened.locator("#count").textContent(), count);
   assert.equal(await reopened.locator("html").getAttribute("data-theme"), "dark");
 

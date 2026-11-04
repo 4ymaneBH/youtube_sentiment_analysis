@@ -5,7 +5,10 @@ const $ = (id) => document.getElementById(id);
 const analyze = $("analyze");
 const filter = $("filter");
 const theme = $("theme");
+const overview = document.querySelector(".overview");
+const commentList = $("comments");
 const darkPreference = matchMedia("(prefers-color-scheme: dark)");
+const percent = new Intl.NumberFormat(undefined, { style: "percent", maximumFractionDigits: 1 });
 const labels = { positive: "Positive", neutral: "Neutral", negative: "Negative", skipped: "Skipped" };
 let tabId, videoId, stateKey;
 let state = { status: "idle", rows: [] };
@@ -13,7 +16,7 @@ let state = { status: "idle", rows: [] };
 function setTheme(dark) {
   document.documentElement.dataset.theme = dark ? "dark" : "light";
   theme.setAttribute("aria-pressed", String(dark));
-  theme.textContent = dark ? "Light" : "Dark";
+  theme.title = dark ? "Switch to light mode" : "Switch to dark mode";
 }
 
 const saved = await chrome.storage.local.get("dark");
@@ -24,45 +27,56 @@ theme.onclick = async () => {
   await chrome.storage.local.set({ dark });
 };
 
+function selectedFilter() {
+  return filter.querySelector("input:checked").value;
+}
+
+function resetFilter() {
+  filter.querySelector('input[value="all"]').checked = true;
+}
+
 function visibleRows() {
-  return state.rows.filter((row) => filter.value === "all" || filter.value === (row.sentiment ?? "skipped"));
+  const selected = selectedFilter();
+  return selected === "all" ? state.rows : state.rows.filter((row) => (row.sentiment ?? "skipped") === selected);
 }
 
 function renderRows() {
   const rows = visibleRows();
+  const previousScroll = commentList.scrollTop;
   const items = rows.map((row) => {
     const li = document.createElement("li");
+    const meta = document.createElement("div");
+    meta.className = "comment-meta";
     const badge = document.createElement("span");
     const label = row.sentiment ?? "skipped";
     badge.className = "badge " + label;
-    badge.textContent = labels[label] + (row.confidence == null ? "" : " · " + Math.round(row.confidence * 100) + "% confidence");
-    const text = document.createElement("p");
-    text.textContent = row.text;
-    li.append(badge, text);
+    badge.textContent = labels[label];
+    meta.append(badge);
+    if (row.confidence != null) {
+      const confidence = document.createElement("span");
+      confidence.className = "caption";
+      confidence.textContent = percent.format(row.confidence) + " confidence";
+      meta.append(confidence);
+    }
+    const body = document.createElement("p");
+    body.dir = "auto";
+    body.textContent = row.text;
+    li.append(meta, body);
     return li;
   });
-  $("comments").replaceChildren(...items);
+  commentList.replaceChildren(...items);
+  commentList.hidden = !rows.length;
+  commentList.scrollTop = previousScroll;
+  const count = $("visible-count");
+  count.textContent = selectedFilter() === "all" ? String(rows.length) : rows.length + " of " + state.rows.length;
+  count.setAttribute("aria-label", rows.length + " of " + state.rows.length + " comments shown");
   $("no-matches").hidden = rows.length > 0;
+  $("no-matches").textContent = "No comments match this filter.";
   $("copy").disabled = $("export").disabled = !rows.length;
 }
 
-function render() {
-  const summary = summarize(state.rows);
-  const running = state.status === "running";
-  const messages = {
-    idle: "Scroll to the comments on YouTube to load them, then analyze up to " + MAX_COMMENTS + " comments.",
-    running: state.total ? "Analyzing " + state.processed + " of " + state.total + " comments…" : "Collecting loaded comments…",
-    empty: "No loaded comments found. Scroll to the comments and try again.",
-    done: summary.analyzed ? "Analysis complete for the comments loaded on this video." : "The loaded comments contained no usable text.",
-    partial: state.error || "Some comments could not be analyzed.",
-    error: state.error || "The analysis failed.",
-  };
-  $("status").textContent = videoId ? messages[state.status] : "Open a YouTube video to analyze its comments.";
-  $("count").textContent = state.rows.length ? summary.analyzed + " analyzed" : "";
-  analyze.disabled = !videoId || running;
-  analyze.textContent = running ? "Analyzing…" : state.rows.length ? "Analyze again" : "Analyze comments";
-  $("results").hidden = $("distribution").hidden = !state.rows.length;
-  $("chart").replaceChildren(...SENTIMENTS.map((label) => {
+function renderDistribution(summary) {
+  $("chart").replaceChildren(...SENTIMENTS.filter((label) => summary.counts[label]).map((label) => {
     const segment = document.createElement("span");
     segment.className = label;
     segment.style.width = summary.percentages[label] + "%";
@@ -70,14 +84,57 @@ function render() {
   }));
   $("legend").replaceChildren(...SENTIMENTS.map((label) => {
     const entry = document.createElement("li");
-    const dot = document.createElement("span");
-    dot.className = "dot " + label;
-    entry.append(dot, labels[label] + " " + summary.percentages[label].toFixed(1) + "%");
+    entry.className = label;
+    const name = document.createElement("span");
+    name.className = "legend-label";
+    const swatch = document.createElement("span");
+    swatch.className = "swatch";
+    swatch.setAttribute("aria-hidden", "true");
+    name.append(swatch, labels[label]);
+    const value = document.createElement("strong");
+    value.className = "legend-value";
+    value.textContent = percent.format(summary.percentages[label] / 100);
+    entry.append(name, value);
     return entry;
   }));
-  $("metadata").textContent = state.rows.length
-    ? Math.round(state.latencyMs) + " ms API time · " + summary.skipped + " skipped · Model " + state.modelVersion
-    : "";
+}
+
+function render() {
+  const summary = summarize(state.rows);
+  const running = state.status === "running";
+  const hasResults = state.rows.length > 0;
+  const messages = {
+    idle: "Scroll to the comments on YouTube, then analyze up to " + MAX_COMMENTS + ".",
+    running: state.total ? "Analyzing " + state.processed + " of " + state.total + " comments…" : "Collecting loaded comments…",
+    empty: "Scroll down to load comments, then try again.",
+    done: summary.analyzed ? "Analysis complete. " + summary.analyzed + " comments analyzed." : "The loaded comments contained no usable text.",
+    partial: state.error || "Some comments could not be analyzed.",
+    error: state.error || "The analysis failed.",
+  };
+  overview.dataset.state = state.status;
+  overview.classList.toggle("has-results", hasResults);
+  $("overview-title").textContent = hasResults ? "Sentiment" : "Comment sentiment";
+  $("spectrum-art").toggleAttribute("hidden", hasResults);
+  $("status").textContent = videoId ? messages[state.status] : "Open a YouTube video to analyze its comments.";
+  $("status").classList.toggle("sr-only", state.status === "done" && summary.analyzed > 0);
+  $("count").hidden = !hasResults;
+  $("count").textContent = hasResults ? summary.analyzed + " analyzed" : "";
+  const progress = $("progress");
+  progress.hidden = !running || !state.total;
+  if (!progress.hidden) {
+    progress.max = state.total;
+    progress.value = state.processed;
+  }
+  analyze.disabled = !videoId || running;
+  $("analyze-label").textContent = running ? "Analyzing…" : hasResults ? "Analyze again" : "Analyze comments";
+  $("analyze-icon").setAttribute("href", hasResults ? "#icon-refresh" : "#icon-arrow");
+  $("results").hidden = $("distribution").hidden = !hasResults;
+  $("skipped-filter").hidden = !summary.skipped;
+  if (!summary.skipped && selectedFilter() === "skipped") resetFilter();
+  if (hasResults) {
+    renderDistribution(summary);
+    $("metadata").textContent = Math.round(state.latencyMs) + " ms API time · " + summary.skipped + " skipped · Model " + state.modelVersion;
+  }
   renderRows();
 }
 
@@ -85,8 +142,13 @@ async function loadTab() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   tabId = tab?.id;
   videoId = watchVideoId(tab?.url);
-  stateKey = "analysis:" + tabId + ":" + videoId;
-  const key = stateKey;
+  const key = "analysis:" + tabId + ":" + videoId;
+  if (key !== stateKey) {
+    resetFilter();
+    $("feedback").textContent = "";
+    commentList.scrollTop = 0;
+  }
+  stateKey = key;
   const next = videoId ? await chrome.runtime.sendMessage({ type: "state", tabId, videoId }) : null;
   if (key !== stateKey) return;
   state = next ?? { status: "idle", rows: [] };
@@ -106,7 +168,11 @@ analyze.onclick = async () => {
   }
 };
 
-filter.onchange = renderRows;
+filter.onchange = () => {
+  $("feedback").textContent = "";
+  commentList.scrollTop = 0;
+  renderRows();
+};
 $("copy").onclick = async () => {
   try {
     await navigator.clipboard.writeText(JSON.stringify(visibleRows(), null, 2));
