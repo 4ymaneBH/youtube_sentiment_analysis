@@ -151,15 +151,18 @@ try {
           name + ": " + control.name + " fits across the popup");
       }
       const footer = await send("Runtime.evaluate", {
-        expression: `(() => {
+        expression: `(async () => {
           const button = document.getElementById("results").hidden
             ? document.getElementById("analyze") : document.getElementById("export");
-          button.scrollIntoView({ block: "end" });
+          button.scrollIntoView({ block: "center", behavior: "instant" });
+          await new Promise(requestAnimationFrame);
           const rect = button.getBoundingClientRect();
-          return rect.top >= 0 && rect.bottom <= innerHeight;
-        })()`, returnByValue: true,
+          return { top: rect.top, bottom: rect.bottom, height: innerHeight, scrollY };
+        })()`, awaitPromise: true, returnByValue: true,
       });
-      assert.equal(footer.result.value, true, "bottom actions remain reachable in short windows: " + name);
+      const { top, bottom, height } = footer.result.value;
+      assert.ok(top >= 0 && bottom <= height,
+        `${name}: bottom actions must fit after scrolling (${JSON.stringify(footer.result.value)})`);
     } finally {
       if (popupTarget) await client.send("Target.closeTarget", { targetId: popupTarget.targetId });
       await client.detach();
