@@ -82,6 +82,7 @@ The latency benchmark measures warm model inference on the test machine. The pop
 ## API
 
 The server exposes interactive documentation at [`/docs`](http://127.0.0.1:7860/docs).
+For the public demo, see the [GitHub Codespaces deployment guide and request examples](docs/api-codespaces.md).
 
 | Endpoint | Response |
 | --- | --- |
