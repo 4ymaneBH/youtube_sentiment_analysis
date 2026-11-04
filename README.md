@@ -116,4 +116,4 @@ npm run test:e2e
 
 The browser test installs the extension in an isolated Chromium profile, supplies a controlled YouTube comment page, and sends predictions to the real local API. It checks results, filters, the JSON download, dark mode, persistence, and a server outage. Use `npm run test:e2e -- --live` for a separate check on a public YouTube watch page. The test requires local port 7860 to be free.
 
-The [demo runbook](docs/demo-runbook.md) lists the steps for the assignment recording.
+The [French demo video](reports/demonstration.mp4) shows installation, analysis of a public YouTube video, filters, themes, export, and local API timing. The [demo runbook](docs/demo-runbook.md) lists the steps for reproducing the demonstration.
