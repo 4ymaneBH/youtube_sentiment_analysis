@@ -8,3 +8,13 @@ wheels/
 
 # Virtual environments
 .venv
+.env
+.env.local
+.pytest_cache/
+.ruff_cache/
+.uv-cache/
+/dataset.csv
+/[Dd]ata/raw/
+/[Dd]ata/processed/
+/logs/
+/tmp/
